@@ -30,22 +30,3 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
     app.run(host="0.0.0.0", port=port)
     
-# Lancement du récepteur en arrière-plan
-if 'flask_started' not in st.session_state:
-    Thread(target=run_flask, daemon=True).start()
-    st.session_state['flask_started'] = True
-
-# --- PARTIE 2 : INTERFACE (STREAMLIT) ---
-st.set_page_config(page_title="Signal Bot", page_icon="📈")
-st.title("💎 Signal Institutionnel Live de Mr Allamine")
-
-if os.path.exists(DATA_FILE):
-    df = pd.read_csv(DATA_FILE)
-    for _, sig in df.iloc[::-1].iterrows():
-        with st.chat_message("assistant", avatar="📈"):
-            st.markdown(f"**PAIR :** {sig['pair']}\n**SENS :** {sig['sens']}")
-            st.divider()
-            st.write(f"🎯 **ENTRY :** {sig['entry']} | 🛑 **SL :** {sig['sl']} | ✅ **TP :** {sig['tp']}")
-            st.caption(f"🕒 {sig['date']}")
-else:
-    st.info("Aucun signal reçu pour le moment...")
