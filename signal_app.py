@@ -26,9 +26,10 @@ def webhook():
         new_sig.to_csv(DATA_FILE, mode='a', header=False, index=False)
     return jsonify({"status": "ok"}), 200
 
-def run_flask():
-    app.run(host="0.0.0.0", port=8080)
-
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host="0.0.0.0", port=port)
+    
 # Lancement du récepteur en arrière-plan
 if 'flask_started' not in st.session_state:
     Thread(target=run_flask, daemon=True).start()
