@@ -27,7 +27,7 @@ def webhook():
     return jsonify({"status": "ok"}), 200
 
 def run_flask():
-    app.run(host="0.0.0.0", port=5000)
+    app.run(host="0.0.0.0", port=8080)
 
 # Lancement du récepteur en arrière-plan
 if 'flask_started' not in st.session_state:
