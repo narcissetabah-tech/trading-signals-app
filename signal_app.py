@@ -165,28 +165,25 @@ if not df.empty:
         winrate = round((wins/closed)*100,2)
 
     def calculate_metrics(df):
-    profit_r = 0.0
-    wins = 0
-    losses = 0
+        profit_r = 0.0
+        wins = 0
+        losses = 0
     
-    for _, t in df.iterrows():
-        res = str(t.get("result", "")).lower()
-        rr_raw = str(t.get("rr", "0"))
-        
-        # Extraction du chiffre si format "1:2.0" ou "2.0"
-        try:
-            rr_val = float(rr_raw.split(":")[-1]) if ":" in rr_raw else float(rr_raw)
-        except:
-            rr_val = 0.0
+        for _, t in df.iterrows():
+            res = str(t.get("result", "")).lower()
+            rr_raw = str(t.get("rr", "0")) 
+            try:
+                rr_val = float(rr_raw.split(":")[-1]) if ":" in rr_raw else float(rr_raw)
+            except:
+                rr_val = 0.0
 
-        if res == "win":
-            profit_r += rr_val
-            wins += 1
-        elif res == "loss":
-            profit_r -= 1.0
-            losses += 1
-            
-    return wins, losses, round(profit_r, 2)
+           if res == "win":
+               profit_r += rr_val
+               wins += 1
+           elif res == "loss":
+               profit_r -= 1.0
+               losses += 1     
+       return wins, losses, round(profit_r, 2)
         
     col1,col2,col3,col4,col5 = st.columns(5)
 
