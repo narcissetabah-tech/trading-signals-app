@@ -1,161 +1,323 @@
 import streamlit as st
 import pandas as pd
 import os
+import uuid
 from threading import Thread
 from flask import Flask, request, jsonify
+from streamlit_autorefresh import st_autorefresh
+import plotly.graph_objects as go
 
-# -----------------------------
-# CONFIGURATION PAGE
-# -----------------------------
+# -------------------------
+# CONFIG PAGE
+# -------------------------
+
 st.set_page_config(
-    page_title="Signal Bot Pro",
-    page_icon="📊",
+    page_title="Institutional Signal Dashboard",
+    page_icon="📈",
     layout="wide"
 )
 
-# -----------------------------
-# THEMES
-# -----------------------------
-theme = st.sidebar.selectbox(
-    "🎨 Mode d'affichage",
-    ["System", "Clair", "Sombre"]
-)
+st_autorefresh(interval=5000, key="refresh")
 
-if theme == "Sombre":
-    st.markdown("""
-        <style>
-        body {background-color:#0e1117;color:white;}
-        </style>
-    """, unsafe_allow_html=True)
-
-if theme == "Clair":
-    st.markdown("""
-        <style>
-        body {background-color:white;color:black;}
-        </style>
-    """, unsafe_allow_html=True)
-
-# -----------------------------
-# API RECEIVER (FLASK)
-# -----------------------------
-app = Flask(__name__)
 DATA_FILE = "signals_history.csv"
+
+# -------------------------
+# STYLE
+# -------------------------
+
+st.markdown("""
+<style>
+
+.block-container{
+padding-top:2rem;
+}
+
+.metric-card{
+background-color: rgba(30,30,30,0.05);
+padding:20px;
+border-radius:12px;
+}
+
+.signal-card{
+border-radius:14px;
+padding:20px;
+margin-bottom:15px;
+background:rgba(40,40,40,0.05);
+border-left:6px solid #3b82f6;
+}
+
+.buy{
+border-left:6px solid #00c853;
+}
+
+.sell{
+border-left:6px solid #ff3d00;
+}
+
+</style>
+""", unsafe_allow_html=True)
+
+# -------------------------
+# FLASK API
+# -------------------------
+
+app = Flask(__name__)
 
 @app.route('/webhook', methods=['POST'])
 def webhook():
 
     data = request.json
+    trade_id = str(uuid.uuid4())
 
-    new_sig = pd.DataFrame([{
-        "date": pd.Timestamp.now().strftime("%d %b %H:%M"),
+    new_signal = pd.DataFrame([{
+        "id": trade_id,
+        "date": pd.Timestamp.now(),
         "pair": data.get("pair"),
         "sens": data.get("sens"),
         "entry": data.get("entry"),
         "sl": data.get("sl"),
         "tp": data.get("tp"),
-        "rr": data.get("rr")
+        "rr": data.get("rr"),
+        "result": "open"
     }])
 
     if not os.path.isfile(DATA_FILE):
-        new_sig.to_csv(DATA_FILE, index=False)
+        new_signal.to_csv(DATA_FILE, index=False)
     else:
-        new_sig.to_csv(DATA_FILE, mode='a', header=False, index=False)
+        new_signal.to_csv(DATA_FILE, mode='a', header=False, index=False)
 
-    return jsonify({"status": "ok"}), 200
+    return jsonify({"trade_id":trade_id})
 
 
 def run_flask():
     app.run(host="0.0.0.0", port=5000)
 
-
-if 'flask_started' not in st.session_state:
+if "flask_started" not in st.session_state:
     Thread(target=run_flask, daemon=True).start()
-    st.session_state['flask_started'] = True
+    st.session_state["flask_started"] = True
 
-# -----------------------------
+# -------------------------
 # HEADER
-# -----------------------------
+# -------------------------
+
 st.title("💎 Institutional Signal Dashboard")
+st.caption("Live Trading Signal Monitor")
 
-st.caption("Flux de signaux trading en temps réel")
+# -------------------------
+# LOAD DATA
+# -------------------------
 
-# -----------------------------
-# DATA
-# -----------------------------
 if os.path.exists(DATA_FILE):
+
     df = pd.read_csv(DATA_FILE)
+    df["date"] = pd.to_datetime(df["date"])
+
 else:
+
     df = pd.DataFrame()
 
-# -----------------------------
-# STATS
-# -----------------------------
+# -------------------------
+# NOTIFICATION
+# -------------------------
+
 if not df.empty:
 
-    col1, col2, col3 = st.columns(3)
+    last = df.iloc[-1]
 
-    with col1:
-        st.metric("📡 Signaux reçus", len(df))
+    st.success(
+        f"New Signal → {last['pair']} {last['sens']} | Entry {last['entry']}"
+    )
 
-    with col2:
-        buy = len(df[df["sens"] == "BUY"])
-        st.metric("📈 BUY", buy)
+# -------------------------
+# STATS
+# -------------------------
 
-    with col3:
-        sell = len(df[df["sens"] == "SELL"])
-        st.metric("📉 SELL", sell)
+if not df.empty:
+
+    total = len(df)
+    wins = len(df[df["result"]=="win"])
+    losses = len(df[df["result"]=="loss"])
+
+    closed = wins + losses
+
+    winrate = 0
+    if closed > 0:
+        winrate = round((wins/closed)*100,2)
+
+    profit_r = 0
+
+    for _,t in df.iterrows():
+
+        if t["result"]=="win":
+            profit_r += float(t["rr"])
+
+        if t["result"]=="loss":
+            profit_r -= 1
+
+    col1,col2,col3,col4,col5 = st.columns(5)
+
+    col1.metric("Signals", total)
+    col2.metric("Wins", wins)
+    col3.metric("Losses", losses)
+    col4.metric("Winrate", f"{winrate}%")
+    col5.metric("Profit (R)", round(profit_r,2))
 
 st.divider()
 
-# -----------------------------
-# SIGNALS DISPLAY
-# -----------------------------
-st.subheader("📊 Signaux récents")
+# -------------------------
+# EQUITY GRAPH
+# -------------------------
+
+if not df.empty:
+
+    perf = df.copy()
+
+    perf["profit"]=0
+
+    perf.loc[perf["result"]=="win","profit"]=perf["rr"]
+    perf.loc[perf["result"]=="loss","profit"]=-1
+
+    perf["equity"]=perf["profit"].cumsum()
+
+    fig = go.Figure()
+
+    fig.add_trace(
+        go.Scatter(
+            x=perf["date"],
+            y=perf["equity"],
+            mode="lines",
+            line=dict(width=3)
+        )
+    )
+
+    fig.update_layout(
+        title="Equity Curve",
+        template="plotly_dark",
+        height=400
+    )
+
+    st.plotly_chart(fig, use_container_width=True)
+
+st.divider()
+
+# -------------------------
+# PAIR STATS
+# -------------------------
+
+if not df.empty:
+
+    st.subheader("Pair Statistics")
+
+    pair_stats = []
+
+    for pair in df["pair"].unique():
+
+        sub = df[df["pair"]==pair]
+
+        w = len(sub[sub["result"]=="win"])
+        l = len(sub[sub["result"]=="loss"])
+
+        c = w + l
+
+        wr = 0
+        if c>0:
+            wr = round((w/c)*100,2)
+
+        pair_stats.append([pair,w,l,wr])
+
+    pair_df = pd.DataFrame(
+        pair_stats,
+        columns=["Pair","Wins","Losses","Winrate"]
+    )
+
+    st.dataframe(pair_df, use_container_width=True)
+
+st.divider()
+
+# -------------------------
+# FILTER
+# -------------------------
+
+st.subheader("Signals")
+
+if not df.empty:
+
+    pairs = df["pair"].unique()
+
+    selected = st.selectbox(
+        "Filter Pair",
+        ["All"] + list(pairs)
+    )
+
+    if selected != "All":
+        df = df[df["pair"]==selected]
+
+# -------------------------
+# SIGNAL DISPLAY
+# -------------------------
 
 if df.empty:
 
-    st.info("Aucun signal reçu pour le moment...")
+    st.info("No signals received yet")
 
 else:
 
-    for _, sig in df.iloc[::-1].iterrows():
+    for _,sig in df.iloc[::-1].iterrows():
 
-        color = "#00ff9c" if sig["sens"] == "BUY" else "#ff4b4b"
+        buy = sig["sens"]=="BUY"
 
-        st.markdown(
-            f"""
-            <div style="
-                border-radius:12px;
-                padding:20px;
-                margin-bottom:15px;
-                background:#1e1e1e;
-                border-left:6px solid {color};
-                box-shadow:0px 2px 10px rgba(0,0,0,0.3);
-            ">
+        card_class = "buy" if buy else "sell"
 
-            <h3>{sig['pair']} — <span style='color:{color}'>{sig['sens']}</span></h3>
+        with st.container():
 
-            <b>Entry :</b> {sig['entry']}  
-            <br>
-            <b>Stop Loss :</b> {sig['sl']}  
-            <br>
-            <b>Take Profit :</b> {sig['tp']}  
+            st.markdown(
+                f'<div class="signal-card {card_class}">',
+                unsafe_allow_html=True
+            )
 
-            <br><br>
+            col1,col2 = st.columns([3,1])
 
-            <small>🕒 {sig['date']}</small>
+            with col1:
 
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
+                direction = "🟢 BUY" if buy else "🔴 SELL"
 
-# -----------------------------
-# AUTO REFRESH
-# -----------------------------
-st.sidebar.divider()
+                st.subheader(f"{sig['pair']} — {direction}")
 
-if st.sidebar.button("🔄 Rafraîchir"):
-    st.rerun()
+                st.write(f"Entry : {sig['entry']}")
+                st.write(f"SL : {sig['sl']}")
+                st.write(f"TP : {sig['tp']}")
+                st.write(f"RR : {sig['rr']}")
 
-st.sidebar.caption("Signal Bot Pro")
+                if sig["result"]=="open":
+
+                    c1,c2 = st.columns(2)
+
+                    if c1.button("🏆 WIN", key=f"win{sig['id']}"):
+
+                        df_full = pd.read_csv(DATA_FILE)
+                        df_full.loc[df_full["id"]==sig["id"],"result"]="win"
+                        df_full.to_csv(DATA_FILE,index=False)
+                        st.rerun()
+
+                    if c2.button("❌ LOSS", key=f"loss{sig['id']}"):
+
+                        df_full = pd.read_csv(DATA_FILE)
+                        df_full.loc[df_full["id"]==sig["id"],"result"]="loss"
+                        df_full.to_csv(DATA_FILE,index=False)
+                        st.rerun()
+
+                elif sig["result"]=="win":
+
+                    st.success("WIN")
+
+                elif sig["result"]=="loss":
+
+                    st.error("LOSS")
+
+                st.caption(f"Trade ID : {sig['id']}")
+
+            with col2:
+
+                st.caption(sig["date"])
+
+            st.markdown("</div>", unsafe_allow_html=True)
