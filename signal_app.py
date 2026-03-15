@@ -177,13 +177,13 @@ if not df.empty:
             except:
                 rr_val = 0.0
 
-           if res == "win":
-               profit_r += rr_val
-               wins += 1
-           elif res == "loss":
-               profit_r -= 1.0
-               losses += 1     
-       return wins, losses, round(profit_r, 2)
+            if res == "win":
+                profit_r += rr_val
+                wins += 1
+            elif res == "loss":
+                profit_r -= 1.0
+                losses += 1     
+        return wins, losses, round(profit_r, 2)
         
     col1,col2,col3,col4,col5 = st.columns(5)
 
