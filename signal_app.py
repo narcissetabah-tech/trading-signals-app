@@ -10,19 +10,22 @@ from google.cloud import firestore
 from google.oauth2 import service_account
 import plotly.graph_objects as go
 
-# Vérifier si on est sur Streamlit Cloud (via la variable d'environnement)
-if "gcp" in st.secrets:
-    # --- CONFIG POUR STREAMLIT CLOUD ---
-    gcp_creds = st.secrets["gcp"]
-    from google.oauth2 import service_account
-    creds = service_account.Credentials.from_service_account_info(gcp_creds)
-    db = firestore.Client(credentials=creds, project=gcp_creds["project_id"])
-else:
-    set.error("manque")
-    set.stop()
-    db = firestore.Client(project="tradingbot-489416")
+try:
+    # On vérifie si les secrets existent avant de tenter d'y accéder
+    if "gcp" in st.secrets:
+        from google.oauth2 import service_account
+        gcp_creds = st.secrets["gcp"]
+        creds = service_account.Credentials.from_service_account_info(gcp_creds)
+        db = firestore.Client(credentials=creds, project=gcp_creds["project_id"])
+    else:
+        # Si aucun secret, on tente la connexion native de la VM
+        db = firestore.Client(project="tradingbot-489416")
+except Exception as e:
+    st.error(f"Erreur de connexion à Firestore : {e}")
+    db = None
 
 COLLECTION = "signals"
+
 @st.cache_data(ttl=60)
 def get_signals():
     try:
