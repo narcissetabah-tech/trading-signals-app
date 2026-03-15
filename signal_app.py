@@ -184,6 +184,10 @@ if not df.empty:
                 profit_r -= 1.0
                 losses += 1     
         return wins, losses, round(profit_r, 2)
+
+    wins, losses, profit_r = calculate_metrics(df)
+    total = len(df)
+    winrate = round((wins / total) * 100, 1) if total > 0 else 0
         
     col1,col2,col3,col4,col5 = st.columns(5)
 
@@ -191,7 +195,7 @@ if not df.empty:
     col2.metric("Wins", wins)
     col3.metric("Losses", losses)
     col4.metric("Winrate", f"{winrate}%")
-    col5.metric("Profit (R)", round(profit_r,2))
+    col5.metric("Profit (R)", profit_r)
 
 st.divider()
 
