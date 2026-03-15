@@ -11,22 +11,28 @@ from google.oauth2 import service_account
 import plotly.graph_objects as go
 
 # Vérifier si on est sur Streamlit Cloud (via la variable d'environnement)
-if "STREAMLIT_RUNTIME_ENV" in os.environ:
+if "gcp" in st.secrets:
     # --- CONFIG POUR STREAMLIT CLOUD ---
     gcp_creds = st.secrets["gcp"]
     from google.oauth2 import service_account
     creds = service_account.Credentials.from_service_account_info(gcp_creds)
     db = firestore.Client(credentials=creds, project=gcp_creds["project_id"])
 else:
-    # --- CONFIG POUR TA VM (Beaucoup plus simple) ---
-    # Ici, on utilise l'authentification native de la VM
+    set.error("manque")
+    set.stop()
     db = firestore.Client(project="tradingbot-489416")
 
 COLLECTION = "signals"
+@st.cache_data(ttl=60)
 def get_signals():
-    docs = db.collection(COLLECTION).order_by("date", direction=firestore.Query.DESCENDING).stream()
-    data = [doc.to_dict() for doc in docs]
-    return pd.DataFrame(data) if data else pd.DataFrame()
+    try:
+       docs = db.collection(COLLECTION).order_by("date", direction=firestore.Query.DESCENDING).stream()
+       data = [doc.to_dict() for doc in docs]
+       return pd.DataFrame(data) if data else pd.DataFrame()
+    except Exception as e:
+        st.error(f"erreur : {e} ")
+        return pd.DataFrame()
+        
 df = get_signals()
 
 # -------------------------
