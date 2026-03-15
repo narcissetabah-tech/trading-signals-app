@@ -174,9 +174,8 @@ if not df.empty:
             else:
                 rr_val = float(rr_str)
             profit_r += rr_val
-
-      if t["result"] == "loss":
-         profit_r -= 1
+        if t["result"] == "loss":
+            profit_r -= 1
         
     col1,col2,col3,col4,col5 = st.columns(5)
 
