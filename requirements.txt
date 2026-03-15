@@ -2,3 +2,5 @@ streamlit
 flask
 pandas
 requests
+plotly
+streamlit-autorefresh
