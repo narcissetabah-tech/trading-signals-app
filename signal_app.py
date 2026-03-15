@@ -3,6 +3,7 @@ import pandas as pd
 import os
 import uuid
 import plotly.graph_objects as go
+from streamlit_autorefresh import st_autorefresh
 
 # -------------------------
 # CONFIG PAGE
