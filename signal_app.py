@@ -199,6 +199,15 @@ if not df.empty:
 
 st.divider()
 
+if not df.empty:
+    perf = df.copy()
+    # Conversion forcée de la colonne RR en numérique pour le graphique
+    perf["rr"] = pd.to_numeric(perf["rr"].astype(str).str.replace(r'.*:', '', regex=True), errors='coerce').fillna(0)
+    
+    perf["profit"] = 0.0
+    perf.loc[perf["result"] == "win", "profit"] = perf["rr"]
+    perf.loc[perf["result"] == "loss", "profit"] = -1.0
+    perf["equity"] = perf["profit"].cumsum()
 # -------------------------
 # EQUITY GRAPH
 # -------------------------
