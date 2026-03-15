@@ -166,14 +166,19 @@ if not df.empty:
 
     profit_r = 0
 
-    for _,t in df.iterrows():
+    for _, t in df.iterrows():
+    if t["result"] == "win":
+        # On extrait la partie après le ':' (le 2.0)
+        rr_str = str(t["rr"])
+        if ":" in rr_str:
+            rr_val = float(rr_str.split(":")[1])
+        else:
+            rr_val = float(rr_str)
+        profit_r += rr_val
 
-        if t["result"]=="win":
-            profit_r += float(t["rr"])
-
-        if t["result"]=="loss":
-            profit_r -= 1
-
+    if t["result"] == "loss":
+        profit_r -= 1
+        
     col1,col2,col3,col4,col5 = st.columns(5)
 
     col1.metric("Signals", total)
