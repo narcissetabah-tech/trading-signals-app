@@ -2,15 +2,20 @@ import streamlit as st
 import pandas as pd
 import os
 import uuid
+import json
 from threading import Thread
 from flask import Flask, request, jsonify
 from streamlit_autorefresh import st_autorefresh
 from google.cloud import firestore
+from google.oauth2 import service_account
 import plotly.graph_objects as go
 
 try:
-    db = firestore.Client(project="tradingbot-489416")
+    gcp_creds = st.secrets["gcp"]
+    creds = service_account.Credentials.from_service_account_info(gcp_creds)
+    db = firestore.Client(credentials=creds, project=gcp_creds["project_id"])
     COLLECTION = "signals"
+    
 except Exception as e:
     st.error(f"Erreur de connexion à Firestore : {e}")
     db = None
