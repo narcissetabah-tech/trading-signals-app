@@ -8,6 +8,11 @@ from streamlit_autorefresh import st_autorefresh
 from google.cloud import firestore
 import plotly.graph_objects as go
 
+def get_signals():
+    docs = db.collection(COLLECTION).order_by("date", direction=firestore.Query.DESCENDING).stream()
+    data = [doc.to_dict() for doc in docs]
+    return pd.DataFrame(data) if data else pd.DataFrame()
+df = get_signals()    
 # -------------------------
 # CONFIG PAGE
 # -------------------------
@@ -250,7 +255,7 @@ if not df.empty:
 
 if df.empty:
 
-    st.info("No signals received yet")
+    st.info("Aucun signal en base")
 
 else:
 
