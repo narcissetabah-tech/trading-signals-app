@@ -5,6 +5,7 @@ import uuid
 from threading import Thread
 from flask import Flask, request, jsonify
 from streamlit_autorefresh import st_autorefresh
+from google.cloud import firestore
 import plotly.graph_objects as go
 
 # -------------------------
@@ -16,10 +17,10 @@ st.set_page_config(
     page_icon="📈",
     layout="wide"
 )
+db = firestore.Client() 
+COLLECTION = "signals"
 
 st_autorefresh(interval=5000, key="refresh")
-
-DATA_FILE = "signals_history.csv"
 
 # -------------------------
 # STYLE
@@ -68,10 +69,10 @@ def webhook():
 
     data = request.json
     trade_id = str(uuid.uuid4())
-
-    new_signal = pd.DataFrame([{
+    
+    signal_data = {
         "id": trade_id,
-        "date": pd.Timestamp.now(),
+        "date": firestore.SERVER_TIMESTAMP,
         "pair": data.get("pair"),
         "sens": data.get("sens"),
         "entry": data.get("entry"),
@@ -79,18 +80,14 @@ def webhook():
         "tp": data.get("tp"),
         "rr": data.get("rr"),
         "result": "open"
-    }])
-
-    if not os.path.isfile(DATA_FILE):
-        new_signal.to_csv(DATA_FILE, index=False)
-    else:
-        new_signal.to_csv(DATA_FILE, mode='a', header=False, index=False)
-
-    return jsonify({"trade_id":trade_id})
-
+    }
+    
+    # Sauvegarde dans Firestore
+    db.collection(COLLECTION).document(trade_id).set(signal_data)
+    return jsonify({"trade_id": trade_id})
 
 def run_flask():
-    app.run(host="0.0.0.0", port=5000)
+    app.run(host="0.0.0.0", port=5001)
 
 if "flask_started" not in st.session_state:
     Thread(target=run_flask, daemon=True).start()
@@ -103,18 +100,13 @@ if "flask_started" not in st.session_state:
 st.title("💎 Institutional Signal Dashboard")
 st.caption("Live Trading Signal Monitor")
 
-# -------------------------
-# LOAD DATA
-# -------------------------
+# --- LOGIQUE FIRESTORE ---
 
-if os.path.exists(DATA_FILE):
-
-    df = pd.read_csv(DATA_FILE)
-    df["date"] = pd.to_datetime(df["date"])
-
-else:
-
-    df = pd.DataFrame()
+def get_signals():
+    """Récupère les données depuis Firestore"""
+    docs = db.collection(COLLECTION).order_by("date", direction=firestore.Query.DESCENDING).stream()
+    data = [doc.to_dict() for doc in docs]
+    return pd.DataFrame(data) if data else pd.DataFrame()
 
 # -------------------------
 # NOTIFICATION
@@ -294,17 +286,11 @@ else:
 
                     if c1.button("🏆 WIN", key=f"win{sig['id']}"):
 
-                        df_full = pd.read_csv(DATA_FILE)
-                        df_full.loc[df_full["id"]==sig["id"],"result"]="win"
-                        df_full.to_csv(DATA_FILE,index=False)
-                        st.rerun()
+                        db.collection(COLLECTION).document(sig['id']).update({"result": "win"})
 
                     if c2.button("❌ LOSS", key=f"loss{sig['id']}"):
-
-                        df_full = pd.read_csv(DATA_FILE)
-                        df_full.loc[df_full["id"]==sig["id"],"result"]="loss"
-                        df_full.to_csv(DATA_FILE,index=False)
-                        st.rerun()
+                        
+                       db.collection(COLLECTION).document(sig['id']).update({"result": "loss"})
 
                 elif sig["result"]=="win":
 
