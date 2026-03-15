@@ -12,7 +12,8 @@ def get_signals():
     docs = db.collection(COLLECTION).order_by("date", direction=firestore.Query.DESCENDING).stream()
     data = [doc.to_dict() for doc in docs]
     return pd.DataFrame(data) if data else pd.DataFrame()
-df = get_signals()    
+df = get_signals()
+db = firestore.Client(project="tradingbot-489416")
 # -------------------------
 # CONFIG PAGE
 # -------------------------
@@ -21,8 +22,7 @@ st.set_page_config(
     page_title="Institutional Signal Dashboard",
     page_icon="📈",
     layout="wide"
-)
-db = firestore.Client() 
+) 
 COLLECTION = "signals"
 
 st_autorefresh(interval=5000, key="refresh")
