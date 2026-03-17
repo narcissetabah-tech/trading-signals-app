@@ -29,8 +29,8 @@ st.markdown("""
     .block-container{ padding-top:2rem; }
     .metric-card{ background-color: rgba(30,30,30,0.05); padding:20px; border-radius:12px; }
     .signal-card{ border-radius:14px; padding:20px; margin-bottom:15px; background:rgba(40,40,40,0.05); border-left:6px solid #3b82f6; }
-    .buy{ border-left:6px solid #ff3d00; }
-    .sell{ border-left:6px solid #00c853; }
+    .sell{ border-left:6px solid #ff3d00; }
+    .buy{ border-left:6px solid #00c853; }
     </style>
     """, unsafe_allow_html=True)
 
