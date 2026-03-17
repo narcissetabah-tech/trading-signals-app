@@ -122,7 +122,7 @@ if "flask_started" not in st.session_state:
 # -------------------------
 # INTERFACE UTILISATEUR
 # -------------------------
-st.title("💎 Institutional Signal Dashboard")
+st.title("💎 Institutional Signal Dashboard de Mr Allamine")
 st.caption("Live Trading Signal Monitor")
 
 if not df.empty:
@@ -204,7 +204,7 @@ if not df.empty:
             c1, c2 = st.columns([3, 1])
             
             with c1:
-                direction = "🟢 BUY" if buy else "🔴 SELL"
+                direction = "🔴 SELL" if buy else "🟢 BUY"
                 st.subheader(f"{sig['pair']} — {direction}")
                 st.write(f"**Entry:** {sig['entry']} | **SL:** {sig['sl']} | **TP:** {sig['tp']} | **RR:** {sig['rr']}")
 
