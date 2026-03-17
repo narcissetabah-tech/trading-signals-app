@@ -198,7 +198,7 @@ if not df.empty:
     else:
         for _, sig in display_df.iterrows():
             buy = sig["sens"] == "BUY"
-            card_class = "buy" if buy else "sell"
+            card_class = "sell" if buy else "buy"
             
             st.markdown(f'<div class="signal-card {card_class}">', unsafe_allow_html=True)
             c1, c2 = st.columns([3, 1])
